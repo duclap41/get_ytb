@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Download YouTube Video or Audio</title>
+    <script>
+        // Hàm để thay đổi danh sách format dựa trên lựa chọn radio
+        function updateFormatOptions() {
+            const formatList = document.getElementById("format");
+            const videoFormats = ["mp4", "avi", "wmv", "mkv", "hevc"];
+            const audioFormats = ["original", "mp3", "wma", "wav", "flac", "aac"];
+            
+            // Xóa tất cả các tùy chọn cũ
+            formatList.innerHTML = "";
+    
+            // Lấy lựa chọn của người dùng
+            const selectedOption = document.querySelector('input[name="type"]:checked').value;
+    
+            // Thêm các format mới tương ứng
+            const options = selectedOption === "video" ? videoFormats : audioFormats;
+    
+            for (const format of options) {
+                const optionElement = document.createElement("option");
+                optionElement.value = format;
+                optionElement.textContent = format === "original" ? "Original Format" : format.toUpperCase();
+                formatList.appendChild(optionElement);
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Download YouTube Video or Audio</h1>
+    <form action="/download" method="post">
+        <!-- URL nhập vào -->
+        <label for="url">Video URL(s):</label><br>
+        <textarea id="url" name="url" rows="5" cols="50" required placeholder="Nhập mỗi URL trên một dòng."></textarea><br><br>
+
+        <!-- Chọn loại tải về: Video hoặc Audio -->
+        <label>Choose type:</label><br>
+        <input type="radio" id="video" name="type" value="video" onchange="updateFormatOptions()" required>
+        <label for="video">Video</label><br>
+        <input type="radio" id="audio" name="type" value="audio" onchange="updateFormatOptions()" required>
+        <label for="audio">Audio</label><br><br>
+
+        <!-- Danh sách định dạng -->
+        <label for="format">Format:</label><br>
+        <select id="format" name="format" required>
+            <option value="">-- Select Format --</option>
+        </select><br><br>
+
+        <!-- Submit -->
+        <input type="submit" value="Download">
+    </form>
+</body>
+</html>
