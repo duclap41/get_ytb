@@ -3,26 +3,33 @@
 <head>
     <title>Download YouTube Video or Audio</title>
     <script>
-        // Hàm để thay đổi danh sách format dựa trên lựa chọn radio
-        function updateFormatOptions() {
+        function updateFormatAndQuality() {
             const formatList = document.getElementById("format");
-            const videoFormats = ["mp4", "avi", "wmv", "mkv", "hevc"];
-            const audioFormats = ["original", "mp3", "wma", "wav", "flac", "aac"];
-            
-            // Xóa tất cả các tùy chọn cũ
-            formatList.innerHTML = "";
-    
-            // Lấy lựa chọn của người dùng
+            const qualityDiv = document.getElementById("quality_section");
             const selectedOption = document.querySelector('input[name="type"]:checked').value;
-    
-            // Thêm các format mới tương ứng
-            const options = selectedOption === "video" ? videoFormats : audioFormats;
-    
-            for (const format of options) {
-                const optionElement = document.createElement("option");
-                optionElement.value = format;
-                optionElement.textContent = format === "original" ? "Original Format" : format.toUpperCase();
-                formatList.appendChild(optionElement);
+            
+            // Hiển thị/ẩn phần chọn chất lượng video
+            qualityDiv.style.display = selectedOption === "video" ? "block" : "none";
+            
+            // Cập nhật danh sách format
+            formatList.innerHTML = "";
+            
+            if (selectedOption === "video") {
+                const videoFormats = ["mp4", "mkv"];
+                for (const format of videoFormats) {
+                    const optionElement = document.createElement("option");
+                    optionElement.value = format;
+                    optionElement.textContent = format.toUpperCase();
+                    formatList.appendChild(optionElement);
+                }
+            } else {
+                const audioFormats = ["mp3", "m4a", "wav", "aac"];
+                for (const format of audioFormats) {
+                    const optionElement = document.createElement("option");
+                    optionElement.value = format;
+                    optionElement.textContent = format.toUpperCase();
+                    formatList.appendChild(optionElement);
+                }
             }
         }
     </script>
@@ -34,14 +41,41 @@
         <label for="url">Video URL(s):</label><br>
         <textarea id="url" name="url" rows="5" cols="50" required placeholder="Nhập mỗi URL trên một dòng."></textarea><br><br>
 
-        <!-- Chọn loại tải về: Video hoặc Audio -->
+        <!-- Thư mục lưu -->
+        <label for="save_path">Save Directory:</label><br>
+        <input type="text" id="save_path" name="save_path" value="downloads" required><br><br>
+
+        <!-- Đổi tên -->
+        <label for="rename">Rename files?</label>
+        <input type="checkbox" id="rename" name="rename"><br><br>
+
+        <!-- Tùy chọn đổi tên -->
+        <div id="rename_options" style="display: none;">
+            <label for="name_format">Name Format:</label>
+            <input type="text" id="name_format" name="name_format" value="video_" placeholder="Prefix for files"><br>
+            <label for="start_number">Start Number:</label>
+            <input type="number" id="start_number" name="start_number" value="1" min="0"><br><br>
+        </div>
+
+        <!-- Chọn loại -->
         <label>Choose type:</label><br>
-        <input type="radio" id="video" name="type" value="video" onchange="updateFormatOptions()" required>
+        <input type="radio" id="video" name="type" value="video" onchange="updateFormatAndQuality()" required>
         <label for="video">Video</label><br>
-        <input type="radio" id="audio" name="type" value="audio" onchange="updateFormatOptions()" required>
+        <input type="radio" id="audio" name="type" value="audio" onchange="updateFormatAndQuality()" required>
         <label for="audio">Audio</label><br><br>
 
-        <!-- Danh sách định dạng -->
+        <!-- Chọn chất lượng video -->
+        <div id="quality_section" style="display: none;">
+            <label for="quality">Video Quality:</label><br>
+            <select id="quality" name="quality">
+                <option value="1080">1080p</option>
+                <option value="720">720p</option>
+                <option value="480">480p</option>
+                <option value="360">360p</option>
+            </select><br><br>
+        </div>
+
+        <!-- Chọn format -->
         <label for="format">Format:</label><br>
         <select id="format" name="format" required>
             <option value="">-- Select Format --</option>
@@ -50,5 +84,13 @@
         <!-- Submit -->
         <input type="submit" value="Download">
     </form>
+
+    <script>
+        // Script để hiện/ẩn tùy chọn đổi tên
+        document.getElementById('rename').addEventListener('change', function() {
+            document.getElementById('rename_options').style.display = 
+                this.checked ? 'block' : 'none';
+        });
+    </script>
 </body>
 </html>

@@ -5,74 +5,94 @@ from fastapi.staticfiles import StaticFiles
 import yt_dlp
 import os
 import re
+from typing import Optional
 
 app = FastAPI()
-
-# Khởi tạo Jinja2 Templates
 templates = Jinja2Templates(directory="templates")
-
-# Cung cấp các tệp tĩnh
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-# Trang chủ với form nhập URL YouTube
 @app.get("/")
 async def home(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
 
-# Hàm loại bỏ ký tự đặc biệt
 def sanitize_filename(name):
     return re.sub(r'[\\/*?:"<>|]', "_", name)
 
-# Endpoint tải video hoặc audio
+def get_format_string(type: str, quality: str, format: str) -> str:
+    if type == "video":
+        # Format string cho video với chất lượng cụ thể
+        if quality == "1080":
+            return f"bestvideo[height<=1080]+bestaudio/best[height<=1080]"
+        elif quality == "720":
+            return f"bestvideo[height<=720]+bestaudio/best[height<=720]"
+        elif quality == "480":
+            return f"bestvideo[height<=480]+bestaudio/best[height<=480]"
+        elif quality == "360":
+            return f"bestvideo[height<=360]+bestaudio/best[height<=360]"
+    else:
+        # Format string cho audio
+        return "bestaudio/best"
+
 @app.post("/download")
 async def download(
-    request: Request,  # Thêm request để sử dụng template
-    url: str = Form(...), 
-    type: str = Form(...), 
-    format: str = Form(...)
+    request: Request,
+    url: str = Form(...),
+    type: str = Form(...),
+    format: str = Form(...),
+    save_path: str = Form(...),
+    rename: Optional[bool] = Form(False),
+    name_format: Optional[str] = Form("video_"),
+    start_number: Optional[int] = Form(1),
+    quality: Optional[str] = Form(None)
 ):
     try:
-        # Chuyển đổi chuỗi URL nhập vào thành danh sách URL
+        if not os.path.exists(save_path):
+            os.makedirs(save_path)
+
         urls = url.splitlines()
-
-        # Đảm bảo thư mục downloads tồn tại
-        if not os.path.exists('downloads'):
-            os.makedirs('downloads')
-
         messages = []
-        
-        for u in urls:
-            u = u.strip()  # Loại bỏ khoảng trắng dư thừa
-            if not u:
-                continue  # Nếu URL trống, bỏ qua
+        current_number = start_number
 
-            # Cấu hình tải video/audio
+        for u in urls:
+            u = u.strip()
+            if not u:
+                continue
+
+            if rename:
+                new_filename = f"{name_format}{current_number}"
+                output_template = os.path.join(save_path, new_filename + ".%(ext)s")
+                current_number += 1
+            else:
+                output_template = os.path.join(save_path, sanitize_filename("%(title)s.%(ext)s"))
+
             ydl_opts = {
-                'format': 'bestaudio/best' if type == 'audio' else 'bestvideo+bestaudio/best',
-                'outtmpl': f'downloads/{sanitize_filename("%(title)s")}.%(ext)s',
+                'format': get_format_string(type, quality, format),
+                'outtmpl': output_template,
                 'postprocessors': []
             }
 
-            if type == 'audio' and format != "original":
+            # Thêm postprocessor cho format cụ thể
+            if type == "video":
+                ydl_opts['postprocessors'].append({
+                    'key': 'FFmpegVideoConvertor',
+                    'preferedformat': format,  # mp4 hoặc mkv
+                })
+            elif type == "audio":
                 ydl_opts['postprocessors'].append({
                     'key': 'FFmpegExtractAudio',
                     'preferredcodec': format,
                     'preferredquality': '192',
                 })
 
-            # Tải file
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(u, download=True)
-                file_name = ydl.prepare_filename(info_dict)
-                if type == "audio":
-                    file_name = os.path.splitext(file_name)[0] + f".{format}"
+                if rename:
+                    messages.append(f"Đã tải về: {new_filename}")
+                else:
+                    messages.append(f"Đã tải về: {sanitize_filename(info_dict['title'])}")
 
-            # Thêm thông báo tải thành công
-            messages.append(f"Đã tải về: {sanitize_filename(info_dict['title'])}")
-
-        # Trả về thông báo cho tất cả các URL
         return templates.TemplateResponse(
-            "index.html", 
+            "index.html",
             {"request": request, "message": "<br>".join(messages)}
         )
 
