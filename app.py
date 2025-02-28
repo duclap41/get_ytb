@@ -20,17 +20,14 @@ def sanitize_filename(name):
 
 def get_format_string(type: str, quality: str, format: str) -> str:
     if type == "video":
-        # Format string cho video với chất lượng cụ thể
-        if quality == "1080":
-            return f"bestvideo[height<=1080]+bestaudio/best[height<=1080]"
-        elif quality == "720":
-            return f"bestvideo[height<=720]+bestaudio/best[height<=720]"
-        elif quality == "480":
-            return f"bestvideo[height<=480]+bestaudio/best[height<=480]"
-        elif quality == "360":
-            return f"bestvideo[height<=360]+bestaudio/best[height<=360]"
+        quality_string = {
+            "1080": "[height<=1080]",
+            "720": "[height<=720]",
+            "480": "[height<=480]",
+            "360": "[height<=360]"
+        }.get(quality, "")
+        return f"bestvideo{quality_string}/best{quality_string}"
     else:
-        # Format string cho audio
         return "bestaudio/best"
 
 @app.post("/download")
@@ -68,14 +65,16 @@ async def download(
             ydl_opts = {
                 'format': get_format_string(type, quality, format),
                 'outtmpl': output_template,
-                'postprocessors': []
+                'postprocessors': [],
+                'noplaylist': True,
+                'no_warnings': True,
+                'quiet': True
             }
 
-            # Thêm postprocessor cho format cụ thể
             if type == "video":
                 ydl_opts['postprocessors'].append({
                     'key': 'FFmpegVideoConvertor',
-                    'preferedformat': format,  # mp4 hoặc mkv
+                    'preferedformat': format,
                 })
             elif type == "audio":
                 ydl_opts['postprocessors'].append({
@@ -87,9 +86,9 @@ async def download(
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(u, download=True)
                 if rename:
-                    messages.append(f"Đã tải về: {new_filename}")
+                    messages.append(f"Downloaded: {new_filename}")
                 else:
-                    messages.append(f"Đã tải về: {sanitize_filename(info_dict['title'])}")
+                    messages.append(f"Downloaded: {sanitize_filename(info_dict['title'])}")
 
         return templates.TemplateResponse(
             "index.html",
@@ -99,5 +98,5 @@ async def download(
     except Exception as e:
         return templates.TemplateResponse(
             "index.html",
-            {"request": request, "message": f"Lỗi khi tải file: {str(e)}"}
+            {"request": request, "message": f"Error downloading: {str(e)}"}
         )
